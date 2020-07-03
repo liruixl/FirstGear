@@ -86,7 +86,7 @@ public:
     bool wait(pthread_mutex_t *m_mutex)
     {
         int ret = 0;
-        //pthread_mutex_lock(&m_mutex);
+        //pthread_mutex_lock(&m_mutex); //用户自己上锁
         ret = pthread_cond_wait(&m_cond, m_mutex);
         //pthread_mutex_unlock(&m_mutex);
         return ret == 0;

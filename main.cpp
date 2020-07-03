@@ -2,8 +2,10 @@
 #include <iostream>
 #include <string>
 #include "./CGImysql/sql_conn_pool.h"
+#include "./log/block_queue.h"
+#include "./log/log.h"
 
-int main()
+void tsetmysql()
 {
     std::cout << "hello world!" << std::endl;
 
@@ -38,4 +40,13 @@ int main()
         
         std::cout << temp1 << " " << temp2 << std::endl;
     }
+}
+
+int main()
+{
+    Log::getInstance()->init("lirui_log.txt", true);
+
+    Log::getInstance()->write_log(0, "%d-%d-%s", 1, 100, "debug log molude aaaaa");
+
+    return 1;
 }
