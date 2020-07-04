@@ -1,18 +1,46 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
 #include "./CGImysql/sql_conn_pool.h"
 #include "./log/block_queue.h"
 #include "./log/log.h"
+#include "./threadpool/threadpool.h"
 
-void tsetmysql()
+#include "Task.h"
+#include <unistd.h>
+
+void tsetmysql_and_threadpool()
 {
-    std::cout << "hello world!" << std::endl;
+    std::cout << __FUNCTION__ << "()" << std::endl;
 
     //先从连接池中取一个连接
     //创建数据库连接池
     SqlConnPool *connPool = ConnPool();
     connPool->init("localhost", 3306, "root", "lirui", "youshuang", 8);
+
+    threadpool<Task> tp(connPool);
+
+    std::vector<Task *> tasks; 
+
+    for(int i = 0; i < 30; i++)
+    {
+        Task * task = new Task;
+        tasks.push_back(task);
+        tp.addTask(task);
+        sleep(1);
+    }
+
+    
+    // for(int i = 0; i < 66; i++)
+    // {
+    //     delete tasks[i]; //线程还没执行我这就delete了？？
+    // }
+
+    // sleep(8); //bug
+    // process 55 th request
+    // process 56 th request
+    // 段错误 (核心已转储)
 
     connectionRAII mysqlcon(connPool);
     MYSQL* mysql = mysqlcon.getMysqlConn();
@@ -42,11 +70,21 @@ void tsetmysql()
     }
 }
 
+void test_log()
+{
+    Log::get_instance()->init("lirui_log.txt", 0);
+
+    Log::get_instance()->write_log(0, "%d-%d-%s", 1, 100, "debug log molude aaaaa");
+
+    LOG_INFO("-----%s",  "I hopppppppe offfffffer");
+    LOG_WARN("-----%s",  "I hopppppppe offfffffer");
+    LOG_DEBUG("-----%s",  "I hopppppppe offfffffer");
+
+}
+
 int main()
 {
-    Log::getInstance()->init("lirui_log.txt", true);
-
-    Log::getInstance()->write_log(0, "%d-%d-%s", 1, 100, "debug log molude aaaaa");
-
+    
+    tsetmysql_and_threadpool();
     return 1;
 }

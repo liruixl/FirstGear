@@ -10,11 +10,14 @@ SqlConnPool::SqlConnPool()
 }
 SqlConnPool::~SqlConnPool()
 {
+    std::cout << "closing sql conn pool..." << std::endl;
     lock.lock();
     CurConn = 0;
     FreeConn = 0;
     connList.clear(); //内部智能指针，deleter
     lock.unlock();
+    std::cout << "conn pool is closed." << std::endl;
+
 }
 
 SqlConnPool* SqlConnPool::GetInstance()
