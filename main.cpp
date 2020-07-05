@@ -2,18 +2,18 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <sys/socket.h>
 #include "./CGImysql/sql_conn_pool.h"
 #include "./log/block_queue.h"
 #include "./log/log.h"
 #include "./threadpool/threadpool.h"
+#include "./http/http_conn.h"
 
 #include "Task.h"
 #include <unistd.h>
 
 void tsetmysql_and_threadpool()
 {
-    std::cout << __FUNCTION__ << "()" << std::endl;
-
     //先从连接池中取一个连接
     //创建数据库连接池
     SqlConnPool *connPool = ConnPool();
@@ -82,9 +82,9 @@ void test_log()
 
 }
 
+
 int main()
 {
     
-    tsetmysql_and_threadpool();
-    return 1;
+    return 0;
 }

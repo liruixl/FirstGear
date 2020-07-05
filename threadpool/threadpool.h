@@ -120,10 +120,10 @@ void threadpool<T>::run()
 
     while(!m_stop)
     {
-        m_queuestat.wait();         //停止线程池，如果是join状态，要唤醒所有线程，这里用post唤醒？
+        m_queuestat.wait();         //停止线程池，如果是join状态，要唤醒所有线程，信号量wait，要用post唤醒？
         m_queuelocker.lock();
 
-        if(m_workqueue.empty())     //按照道理得到了信号量，这里不应该是空啊
+        if(m_workqueue.empty())     //按照道理得到了信号量，这里不应该是空啊，如果在停止后用post唤醒，这里可能为空
         {
             m_queuelocker.unlock(); //只解锁？信号量不post吗
             continue;
