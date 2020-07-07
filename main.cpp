@@ -2,12 +2,14 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <unordered_map>
 #include <sys/socket.h>
 #include "./CGImysql/sql_conn_pool.h"
 #include "./log/block_queue.h"
 #include "./log/log.h"
 #include "./threadpool/threadpool.h"
 #include "./http/http_conn.h"
+#include "./lst_timer/lst_timer.h"
 
 #include "Task.h"
 #include <unistd.h>
@@ -82,9 +84,45 @@ void test_log()
 
 }
 
+void test_timer_lst()
+{
+    std::vector<long> timer = {30, 5, 4, 7, 23, 20, 14, 35, 63, 33};
+    std::unordered_map<long, util_timer*> table;
+
+    sort_timer_lst timerList;
+
+    //add
+    for(auto t : timer)
+    {
+        util_timer* node = new util_timer;
+        node->expire = t;
+
+        timerList.add_timer(node);
+        table[t] = node;
+    }
+    timerList.print();
+
+
+    //del
+    //adjust
+
+    std::vector<long> adjtimer = {4, 7, 23, 33, 63};
+    
+    for(auto t : adjtimer)
+    {
+        util_timer* node = table[t];
+        node->expire  += 20;
+
+        timerList.adjust_timer(node);
+    }
+    timerList.print();
+
+}
 
 int main()
 {
     
+
+
     return 0;
 }
