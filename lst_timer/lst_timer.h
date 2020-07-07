@@ -10,7 +10,7 @@
 
 class util_timer;
 
-class client_data
+struct client_data
 {
     sockaddr_in address; //port and ip
     int sockfd;
