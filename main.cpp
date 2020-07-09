@@ -1,3 +1,4 @@
+// https://code.visualstudio.com/docs/cpp/config-linux
 
 #include <stdio.h>
 #include <unistd.h>
@@ -100,6 +101,8 @@ void show_error(int connfd, const char *info)
     close(connfd);
 }
 
+
+//日志模块始化 连接池初始化 线程池初始化
 int main(int argc, char* argv[])
 {
 #ifdef ASYNLOG
@@ -120,8 +123,8 @@ int main(int argc, char* argv[])
     addsig(SIGPIPE, SIG_IGN);
 
     //创建数据库连接池
-    SqlConnPool *connPool = connection_pool::GetInstance();
-    connPool->init("localhost", "root", "lirui", "youshuang", 3306, 8);
+    SqlConnPool *connPool = SqlConnPool::GetInstance();
+    connPool->init("localhost", 3306,"root", "lirui", "youshuang", 8);
 
     //创建线程池
     threadpool<http_conn> *pool = NULL;
@@ -151,7 +154,7 @@ int main(int argc, char* argv[])
     address.sin_port = htons(port);
 
     int flag = 1;
-    setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR. &flag, sizeof(flag));
+    setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
     
     ret = bind(listenfd, (struct sockaddr*)&address, sizeof(address));
     assert(ret >= 0);
@@ -237,41 +240,173 @@ int main(int argc, char* argv[])
 #ifdef listenfdET
                 while(1)
                 {
-                    
+                     int connfd = accept(listenfd, (sockaddr *)&client_addr, &client_addrlength);
+                if(connfd < 0)
+                {
+                    LOG_ERROR("%s:errno is:%d", "accept error", errno);
+                    continue;
                 }
+                if(http_conn::m_user_count >= MAX_FD)
+                {
+                    show_error(connfd, "Internal server busy");
+                    LOG_ERROR("%s", "Internal server busy");
+                    continue;
+                }
+
+                user_http_conns[connfd].init(connfd, client_addr); //保存http连接
+
+                //初始化client_data数据
+                //创建定时器, 超时时间，回调函数，client_data
+                users_timer[connfd].address = client_addr;
+                users_timer[connfd].sockfd = connfd;
+                users_timer[connfd].timer = nullptr;
+
+                util_timer* timer = new util_timer;
+                timer->user_data = &users_timer[connfd];
+                timer->cb_func = cb_fun;
+                time_t cur = time(NULL);
+                timer->expire = cur + 3*TIMESLOT;
+                users_timer[connfd].timer = timer;
+
+                timer_list.add_timer(timer);
+
+                }
+                
+                continue;
 #endif
             }
 
                
            else if(events[i].events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR))
            {
+               //http_conn数组user_http_conns，http连接，类内没有动态new
+               //client_data数组user_timer，存储用户信息及定时器
+               //定时器链表
+               //发生错误时
+               util_timer* timer = users_timer[sockfd].timer;
+               timer->cb_func(&users_timer[sockfd]);
+               /*
+                    不清除http_conn数组和client_data数组种的数据嘛？
+                    sockfd下标的数据
+               */
 
+               if(timer)
+               {
+                   timer_list.del_timer(timer);
+               }
            }
-
+            //处理信号
            else if(sockfd == pipefd[0] && events[i].events & EPOLLIN)
            {
+               /*
+                读取管道数据
+               */
+               int sig;
+               char signals[1024];
+
+               ret = recv(pipefd[0], signals, sizeof(signals), 0);
+
+               if(ret == -1) { continue; }
+               else if(ret == 0) { continue; }
+               else
+               {
+                   for(int i = 0; i < ret; ++i)
+                   {
+                       switch (signals[i])
+                       {
+                       case SIGALRM:
+                       {
+                           timeout = true;
+                           break;
+                       }
+                       case SIGTERM:
+                       {
+                           stop_server = true;
+                           break;
+                       }
+                       
+                       default:
+                           break;
+                       }
+                   }
+               }
 
            }
            else if(events[i].events & EPOLLIN)
            {
 
+                /*
+                    可读事件
+                    1读取TCP缓冲区到http连接缓冲区
+                    2调整timer
+                    3添加任务队列http_conn
+                */
+                util_timer * timer = users_timer[sockfd].timer;
+                bool readok = user_http_conns[sockfd].read_once();
+                if(readok)
+                {
+                    LOG_INFO("read data, deal with the client(%s)", inet_ntoa(user_http_conns[sockfd].get_address()->sin_addr));
+                    Log::get_instance()->flush();
+
+                    //pool->addTask(&user_http_conns[sockfd]);
+                    pool->addTask(user_http_conns + sockfd);
+
+                    if(timer)
+                    {
+                        time_t cur = time(NULL);
+                        timer->expire = cur + 3 * TIMESLOT;
+                        LOG_INFO("%s", "adjust timer once");
+                        Log::get_instance()->flush();
+                        timer_list.adjust_timer(timer); 
+                    }
+                }
+                else //读error
+                {
+                    timer->cb_func(&users_timer[sockfd]);
+                    if(timer) timer_list.del_timer(timer);
+                }
            }
            else if(events[i].events & EPOLLOUT)
            {
-
-           }
-
-           if(timeout)
-           {
-               timer_handler();
-               timeout =false;
+               /*
+                    可写事件
+                    1将http缓冲区响应数据写入TCP发送缓冲区
+                    2调整计时器
+               */
+               util_timer* timer = users_timer[sockfd].timer;
+               bool writeok = user_http_conns[sockfd].write();
+               if(writeok)
+               {
+                    LOG_INFO("send data to the client(%s)", inet_ntoa(user_http_conns[sockfd].get_address()->sin_addr));
+                    Log::get_instance()->flush();
+                    if (timer)
+                    {
+                        time_t cur = time(NULL);
+                        timer->expire = cur + 3 * TIMESLOT;
+                        LOG_INFO("%s", "adjust timer once");
+                        Log::get_instance()->flush();
+                        timer_list.adjust_timer(timer);
+                    }
+               }
+               else
+               {
+                    timer->cb_func(&users_timer[sockfd]);
+                    if (timer)
+                    {
+                        timer_list.del_timer(timer);
+                    }
+               }
            }
         }
-    }
 
-
-
-
+        if(timeout)
+        {
+            
+            timer_handler();
+            timeout =false;
+        
+        }
+    }//end while
 
     close(epollfd);
     close(listenfd);

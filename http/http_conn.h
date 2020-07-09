@@ -106,6 +106,7 @@ private:
     HTTP_CODE parse_content(char *text);
 
     /*
+        ****
         当得到一个完整正确的http请求时，分析目标文件属性，
         使用mmap将其映射到内存地址m_file_address处
     */

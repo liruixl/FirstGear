@@ -5,8 +5,8 @@
 
 #include "../log/log.h"
 
-#define connfdET       //边缘触发非阻塞
-//#define connfdLT         //水平触发阻塞
+//#define connfdET       //边缘触发非阻塞
+#define connfdLT         //水平触发阻塞
 
 //定义http响应的一些状态信息
 const char *ok_200_title = "OK";
@@ -20,7 +20,7 @@ const char *error_500_title = "Internal Error";
 const char *error_500_form = "There was an unusual problem serving the request file.\n";
 
 //当浏览器出现连接重置时，可能是网站根目录出错或http响应格式出错或者访问的文件中内容完全为空
-const char *doc_root = "/home/lirui/Project/TinyWebServer_raw/root";
+const char *doc_root = "/home/lirui/Project/FirstGear/source";
 
 //将表中的用户名和密码放入map
 map<string, string> users;
