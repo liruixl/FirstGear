@@ -20,7 +20,7 @@
 #include <sys/wait.h>
 #include <sys/uio.h>
 #include "../lock/locker.h"
-#include "../CGImysql/sql_conn_pool.h"
+#include "../mysql/sql_conn_pool.h"
 class http_conn
 {
 public:

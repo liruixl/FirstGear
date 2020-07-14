@@ -8,5 +8,5 @@ else
 
 endif
 
-server: main.cpp ./CGImysql/sql_conn_pool.cpp ./log/log.cpp ./http/http_conn.cpp ./lst_timer/lst_timer.cpp
+server: main.cpp ./mysql/sql_conn_pool.cpp ./log/log.cpp ./http/http_conn.cpp ./lst_timer/lst_timer.cpp
 	$(CXX) -o server -std=c++0x  $^ $(CXXFLAGS) -lpthread -lmysqlclient

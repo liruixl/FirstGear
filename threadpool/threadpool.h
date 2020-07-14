@@ -7,7 +7,7 @@
 #include <iostream>
 
 #include "../lock/locker.h"
-#include "../CGImysql/sql_conn_pool.h"
+#include "../mysql/sql_conn_pool.h"
 
 template <typename T>
 class threadpool{
