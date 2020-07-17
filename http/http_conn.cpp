@@ -283,7 +283,7 @@ http_conn::HTTP_CODE http_conn::parse_request_line(char *text)
         return BAD_REQUEST;
     //当url为/时，显示判断界面
     if (strlen(m_url) == 1)
-        strcat(m_url, "judge.html");
+        strcat(m_url, "bookmarks.html");
     m_check_state = CHECK_STATE_HEADER;
     return NO_REQUEST;
 }
@@ -395,7 +395,7 @@ http_conn::HTTP_CODE http_conn::do_request()
 {
     strcpy(m_real_file, doc_root);
     int len = strlen(doc_root);
-    printf("m_url:%s\n", m_url);
+    printf("m_url : %s\n", m_url);
     const char *p = strrchr(m_url, '/');
 
     //处理cgi
@@ -496,23 +496,22 @@ http_conn::HTTP_CODE http_conn::do_request()
 
         free(m_url_real);
     }
-    else if (*(p + 1) == '7')
-    {
-        char *m_url_real = (char *)malloc(sizeof(char) * 200);
-        strcpy(m_url_real, "/fans.html");
-        strncpy(m_real_file + len, m_url_real, strlen(m_url_real));
 
-        free(m_url_real);
-    }
     else
         strncpy(m_real_file + len, m_url, FILENAME_LEN - len - 1);
 
+    printf("FILE_REQUEST: %s\n", m_real_file);
+
     if (stat(m_real_file, &m_file_stat) < 0)
+    {
+        printf("===NO_RESOURSE: %s\n", m_real_file);
         return NO_RESOURCE;
+    }
     if (!(m_file_stat.st_mode & S_IROTH))
         return FORBIDDEN_REQUEST;
     if (S_ISDIR(m_file_stat.st_mode))
         return BAD_REQUEST;
+    
     int fd = open(m_real_file, O_RDONLY);
     m_file_address = (char *)mmap(0, m_file_stat.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     close(fd);
@@ -646,6 +645,14 @@ bool http_conn::process_write(HTTP_CODE ret)
         break;
     }
     case BAD_REQUEST:
+    {
+        add_status_line(400, error_400_title);
+        add_headers(strlen(error_400_form));
+        if (!add_content(error_400_form))
+            return false;
+        break;
+    }
+    case NO_RESOURCE:
     {
         add_status_line(404, error_404_title);
         add_headers(strlen(error_404_form));
